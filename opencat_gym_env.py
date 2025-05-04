@@ -5,7 +5,7 @@ import pybullet_data
 
 
 # Constants to define training and visualisation.
-GUI_MODE = False          # Set "True" to display pybullet in a window
+GUI_MODE = True          # Set "True" to display pybullet in a window
 EPISODE_LENGTH = 250      # Number of steps for one training episode
 MAXIMUM_LENGTH = 1.8e6    # Number of total steps for entire training
 
@@ -234,7 +234,20 @@ class OpenCatGymEnv(gym.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING,0) 
         p.setGravity(0,0,-9.81)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        plane_id = p.loadURDF("plane.urdf")
+        # plane_id = p.loadURDF("plane.urdf")
+        
+        # 加载自定义地面mesh
+        ground_shape = p.createCollisionShape(p.GEOM_MESH, 
+                                            fileName="models/Martian-Terrain.stl",
+                                            meshScale=[0.03,0.03,0.03])
+        ground_visual = p.createVisualShape(p.GEOM_MESH,
+                                          fileName="models/Martian-Terrain.stl",
+                                          meshScale=[0.03,0.03,0.03])
+        ground_id = p.createMultiBody(baseMass=0,
+                                    baseCollisionShapeIndex=ground_shape,
+                                    baseVisualShapeIndex=ground_visual,
+                                    basePosition=[-1.0,1.0,-1.2],
+                                    baseOrientation=p.getQuaternionFromEuler([90,0,0]))
 
         start_pos = [0,0,0.08]
         start_orient = p.getQuaternionFromEuler([0,0,0])
