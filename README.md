@@ -1,5 +1,8 @@
-# OpenCat Gym
-A gym reinforcement learning environment for OpenCat robots based on Stable-Baselines3 and PyBullet.
+# Teach Bittle Dog to Walk
+
+> Original repo: https://github.com/ger01d/opencat-gym
+
+A gym reinforcement learning environment for Quadruped robot based on Stable-Baselines3 and PyBullet.
 
 ## Simulation and Application
 <img src=animations/trained_agent_playground.gif width="400" /> <img src=animations/application.gif width="400" />
