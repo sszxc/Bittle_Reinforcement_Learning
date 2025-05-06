@@ -5,20 +5,20 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from opencat_gym_env import OpenCatGymEnv
 
-# Create OpenCatGym environment from class
-parallel_env = 1
-env = make_vec_env(OpenCatGymEnv, n_envs=parallel_env)
-model = PPO.load("trained/trained_agent_PPO")
+env = OpenCatGymEnv()
+model = PPO.load("trained/PPO_0506_145436_backward")
 
-obs = env.reset()
+env.set_target_velocity(forward_velocity=1.0, lateral_velocity=0.0, angular_velocity=0.0)
+obs, info = env.reset()
 sum_reward = 0
 
 for i in range(500):    
     action, _state = model.predict(obs, deterministic=True)
-    obs, reward, done, info = env.step(action)
+    obs, reward, terminated, truncated, info = env.step(action)
     sum_reward += reward
     env.render(mode="human")
-    if done:
-        print("Reward", sum_reward[0])
+    # time.sleep(0.01)  # 添加10ms延时使渲染更流畅
+    if terminated or truncated:
+        print("Reward", sum_reward)
         sum_reward = 0
-        obs = env.reset()
+        obs, info = env.reset()

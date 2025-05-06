@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 import pybullet as p
 import pybullet_data
+import random
 
 
 # Constants to define training and visualisation.
@@ -54,17 +55,11 @@ class OpenCatGymEnv(gym.Env):
         self.angle_history = np.array([])
         self.bound_ang = np.deg2rad(BOUND_ANG)  # 关节最大角度
 
-        # # random target velocity per env
-        # vx = np.random.uniform(-0.1, 0.1)
-        # vy = np.random.uniform(-0.1, 0.1)
-        # rz = np.random.uniform(-0.1, 0.1)
-        # self.set_target_velocity(forward_velocity=vx,
-        #                          lateral_velocity=vy,
-        #                          angular_velocity=rz)
-        # fixed for debugging
-        self.set_target_velocity(forward_velocity=0.0,
-                                 lateral_velocity=0.0,
-                                 angular_velocity=1.0)
+        self.set_target_velocity()
+        # # fixed for debugging
+        # self.set_target_velocity(forward_velocity=1.0,
+        #                          lateral_velocity=0.0,
+        #                          angular_velocity=0.0)
 
         if GUI_MODE:
             p.connect(p.GUI)
@@ -379,7 +374,7 @@ class OpenCatGymEnv(gym.Env):
 
         return value_randomized
         
-    def set_target_velocity(self, forward_velocity, lateral_velocity=0.0, angular_velocity=0.0):
+    def set_target_velocity(self, forward_velocity=None, lateral_velocity=None, angular_velocity=None):
         """设置目标速度和角速度
         
         Args:
@@ -387,4 +382,18 @@ class OpenCatGymEnv(gym.Env):
             lateral_velocity (float): 目标横向速度 (y方向)
             angular_velocity (float): 目标角速度 (绕z轴)
         """
-        self.target_velocity = np.array([forward_velocity, lateral_velocity, angular_velocity])
+        # random target velocity per env
+        # vx = np.random.uniform(-0.1, 0.1)
+        # vy = np.random.uniform(-0.1, 0.1)
+        # rz = np.random.uniform(-0.1, 0.1)
+        vx, vy = random.choice([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
+        rz = random.choice([-1., 0., 1.])
+        
+        if forward_velocity is not None:
+            vx = forward_velocity
+        if lateral_velocity is not None:
+            vy = lateral_velocity
+        if angular_velocity is not None:
+            rz = angular_velocity
+
+        self.target_velocity = np.array([vx, vy, rz])

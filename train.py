@@ -3,15 +3,17 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from opencat_gym_env import OpenCatGymEnv
-
+from datetime import datetime
 # Create OpenCatGym environment from class and check if structure is correct
 #env = OpenCatGymEnv()
 #check_env(env)
 
 if __name__ == "__main__":
+    exp_name = f"PPO_{datetime.now().strftime('%m%d_%H%M%S')}_forward"
+
     # Set up number of parallel environments
     parallel_env = 8
-    env = make_vec_env(OpenCatGymEnv, 
+    env = make_vec_env(OpenCatGymEnv,
                        n_envs=parallel_env, 
                        vec_env_cls=SubprocVecEnv)
     # Single environment for testing
@@ -25,9 +27,9 @@ if __name__ == "__main__":
                 policy_kwargs=custom_arch, 
                 n_steps=int(2048*8/parallel_env), 
                 verbose=1,
-                tensorboard_log="trained/tensorboard_logs/").learn(2e6)  # , tb_log_name="PPO_backward"
+                tensorboard_log="trained/tensorboard_logs/").learn(2e6, tb_log_name=exp_name)
 
-    model.save("trained/opencat_gym_esp32_trained_controller")
+    model.save("trained/" + exp_name)
 
     # Load model to continue previous training
     #model = PPO.load("trained/opencat_gym_esp32_trained_controller", 
@@ -35,5 +37,3 @@ if __name__ == "__main__":
     #                   n_steps=int(2048*8/parallel_env), verbose=1, 
     #                   tensorboard_log="trained/tensorboard_logs/").learn(2e6)
     #model.save("trained/opencat_gym_esp32_trained_controller_2")
-
-
