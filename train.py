@@ -14,6 +14,8 @@ if __name__ == "__main__":
     env = make_vec_env(OpenCatGymEnv, 
                        n_envs=parallel_env, 
                        vec_env_cls=SubprocVecEnv)
+    # Single environment for testing
+    # env = OpenCatGymEnv()
 
     # Change architecture of neural network to two hidden layers of size 256
     custom_arch = dict(net_arch=[256, 256])
@@ -22,7 +24,8 @@ if __name__ == "__main__":
     model = PPO('MlpPolicy', env, seed=42, 
                 policy_kwargs=custom_arch, 
                 n_steps=int(2048*8/parallel_env), 
-                verbose=1).learn(2e6)
+                verbose=1,
+                tensorboard_log="trained/tensorboard_logs/").learn(2e6)  # , tb_log_name="PPO_backward"
 
     model.save("trained/opencat_gym_esp32_trained_controller")
 
