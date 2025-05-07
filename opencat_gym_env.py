@@ -8,14 +8,14 @@ import os
 # Constants to define training and visualisation.
 GUI_MODE = False           # Set "True" to display pybullet in a window
 # GUI_MODE = True
-EPISODE_LENGTH = 500      # Number of steps for one training episode
+EPISODE_LENGTH = 1000      # Number of steps for one training episode
 MAXIMUM_LENGTH = 1.8e6    # Number of total steps for entire training
 
 # Factors to weight rewards and penalties.
 PENALTY_STEPS = 2e6       # Increase of penalty by step_counter/PENALTY_STEPS
 
-FAC_VELOCITY = 30       # Reward matching target velocity
-FAC_DIRECTION = 1      # Reward matching target direction
+FAC_VELOCITY = 50       # Reward matching target velocity
+FAC_DIRECTION = 10      # Reward matching target direction
 FAC_STABILITY = 0.1       # Punish body roll and pitch velocities
 FAC_Z_VELOCITY = 0.5      # Punish z movement of body
 FAC_SLIP = 0.0            # Punish slipping of paws
@@ -49,7 +49,7 @@ class OpenCatGymEnv(gym.Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, render=None):
+    def __init__(self, render=None, fixed_target_velocity=None, never_end=False):
         print(f"Env created in PID {os.getpid()}")
 
         self.step_counter = 0  # 当前 episode 内的步数，到最大步数或者摔倒时归零
@@ -58,11 +58,14 @@ class OpenCatGymEnv(gym.Env):
         self.angle_history = np.array([])
         self.bound_ang = np.deg2rad(BOUND_ANG)  # 关节最大角度
 
+        self.fixed_target_velocity = fixed_target_velocity
         self.set_target_velocity()
         # # fixed for debugging
         # self.set_target_velocity(forward_velocity=1.0,
         #                          lateral_velocity=0.0,
         #                          angular_velocity=0.0)
+
+        self.never_end = never_end
 
         if GUI_MODE or (render is True):
             p.connect(p.GUI)
@@ -247,16 +250,17 @@ class OpenCatGymEnv(gym.Env):
         # Stop criteria of current learning episode: 
         # Number of steps or robot fell.
         self.step_counter += 1
-        if self.step_counter > EPISODE_LENGTH:
-            self.step_counter_session += self.step_counter
-            terminated = False
-            truncated = True
+        if not self.never_end:
+            if self.step_counter > EPISODE_LENGTH:
+                self.step_counter_session += self.step_counter
+                terminated = False
+                truncated = True
 
-        elif self.is_fallen(): # Robot fell
-            self.step_counter_session += self.step_counter
-            reward = 0
-            terminated = True
-            truncated = False
+            elif self.is_fallen(): # Robot fell
+                self.step_counter_session += self.step_counter
+                reward = 0
+                terminated = True
+                truncated = False
 
         self.observation = np.hstack((self.state_robot, self.angle_history))
 
@@ -265,6 +269,7 @@ class OpenCatGymEnv(gym.Env):
 
 
     def reset(self, seed=None, options=None):
+        self.set_target_velocity()
         self.step_counter = 0
         self.arm_contact = 0  # 手肘和地面的接触（用于惩罚）
         p.resetSimulation()
@@ -388,7 +393,7 @@ class OpenCatGymEnv(gym.Env):
 
         return value_randomized
         
-    def set_target_velocity(self, forward_velocity=None, lateral_velocity=None, angular_velocity=None):
+    def set_target_velocity(self):
         """设置目标速度和角速度
         
         Args:
@@ -396,18 +401,17 @@ class OpenCatGymEnv(gym.Env):
             lateral_velocity (float): 目标横向速度 (y方向)
             angular_velocity (float): 目标角速度 (绕z轴)
         """
-        # random target velocity per env
-        # vx = np.random.uniform(-0.1, 0.1)
-        # vy = np.random.uniform(-0.1, 0.1)
-        # rz = np.random.uniform(-0.1, 0.1)
-        vx, vy = random.choice([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
-        rz = random.choice([-1., 0., 1.])
-        
-        if forward_velocity is not None:
-            vx = forward_velocity
-        if lateral_velocity is not None:
-            vy = lateral_velocity
-        if angular_velocity is not None:
-            rz = angular_velocity
+        if self.fixed_target_velocity is None:
+            # random target velocity per env
+            # vx = np.random.uniform(-0.1, 0.1)
+            # vy = np.random.uniform(-0.1, 0.1)
+            # rz = np.random.uniform(-0.1, 0.1)
+
+            # vx, vy = random.choice([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
+            vx, vy = random.choice([[1., 0.], [-1., 0.], [1., 1.], [1., -1.], [-1., 1.], [-1., -1.]])  # _diagonally
+            # rz = random.choice([-1., 0., 1.])
+            rz = 0.
+        else:
+            vx, vy, rz = self.fixed_target_velocity
 
         self.target_velocity = np.array([vx, vy, rz])

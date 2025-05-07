@@ -1,17 +1,23 @@
 import time
+import torch
 import pybullet as p
+
 from stable_baselines3 import PPO, SAC
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.env_util import make_vec_env
 from opencat_gym_env import OpenCatGymEnv
 
 
-env = OpenCatGymEnv(render=True)
+env = OpenCatGymEnv(render=True, fixed_target_velocity=[1.0, -1.0, 0.0], never_end=True)
 
-# model = PPO.load("trained/PPO_0506_173349_forward_only")
-model = PPO.load("trained/ckpts/PPO_0506_175825_forward_only/rl_model_275000_steps.zip")
+# ====== load model ======
+# directly load the model from .zip file
+# model = PPO.load("trained/ckpts/PPO_0506_174547_forward_only/rl_model_64000_steps.zip")
+# model = PPO.load("trained/ckpts/PPO_0506_220135_diagonally_norotate/rl_model_3680000_steps.zip")
 
-env.set_target_velocity(forward_velocity=1.0, lateral_velocity=0.0, angular_velocity=0.0)
+# initialize a PPO model with the same structure, then load the weights
+model = PPO("MlpPolicy", env, policy_kwargs=dict(net_arch=[256, 256]), verbose=0)
+model.policy.load_state_dict(torch.load("trained/ckpts/PPO_0506_232613_diagonally_norotate/policy_weights.pth", map_location='cpu'))
+# ====== load model ======
+
 obs, info = env.reset()
 sum_reward = 0
 
@@ -20,7 +26,7 @@ for i in range(500):
     obs, reward, terminated, truncated, info = env.step(action)
     sum_reward += reward
     env.render(mode="human")
-    # time.sleep(0.01)  # 添加10ms延时使渲染更流畅
+    time.sleep(0.02)  # add delay to make the rendering more smooth
     if terminated or truncated:
         print("Reward", sum_reward)
         sum_reward = 0
