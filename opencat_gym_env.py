@@ -3,24 +3,25 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 import random
-
+import os
 
 # Constants to define training and visualisation.
-GUI_MODE = False          # Set "True" to display pybullet in a window
-EPISODE_LENGTH = 250      # Number of steps for one training episode
+GUI_MODE = False           # Set "True" to display pybullet in a window
+# GUI_MODE = True
+EPISODE_LENGTH = 500      # Number of steps for one training episode
 MAXIMUM_LENGTH = 1.8e6    # Number of total steps for entire training
 
 # Factors to weight rewards and penalties.
 PENALTY_STEPS = 2e6       # Increase of penalty by step_counter/PENALTY_STEPS
 
-FAC_VELOCITY = 500       # Reward matching target velocity
-FAC_DIRECTION = 500      # Reward matching target direction
+FAC_VELOCITY = 30       # Reward matching target velocity
+FAC_DIRECTION = 1      # Reward matching target direction
 FAC_STABILITY = 0.1       # Punish body roll and pitch velocities
-FAC_Z_VELOCITY = 0.0      # Punish z movement of body
+FAC_Z_VELOCITY = 0.5      # Punish z movement of body
 FAC_SLIP = 0.0            # Punish slipping of paws
 FAC_ARM_CONTACT = 0.01    # Punish crawling on arms and elbows
-FAC_SMOOTH_1 = 1.0        # Punish jitter and vibrational movement, 1st order
-FAC_SMOOTH_2 = 1.0        # Punish jitter and vibrational movement, 2nd order
+FAC_SMOOTH_1 = 0.0  # 1.0        # Punish jitter and vibrational movement, 1st order
+FAC_SMOOTH_2 = 0.0  # 1.0        # Punish jitter and vibrational movement, 2nd order
 FAC_CLEARANCE = 0.0       # Factor to enfore foot clearance to PAW_Z_TARGET
 PAW_Z_TARGET = 0.005      # Target height (m) of paw during swing phase
 
@@ -48,7 +49,9 @@ class OpenCatGymEnv(gym.Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self):
+    def __init__(self, render=None):
+        print(f"Env created in PID {os.getpid()}")
+
         self.step_counter = 0  # 当前 episode 内的步数，到最大步数或者摔倒时归零
         self.step_counter_session = 0  # 累计整个训练过程中的总步数，episode 结束的时候会加入到总步数中
         self.state_history = np.array([])
@@ -61,7 +64,7 @@ class OpenCatGymEnv(gym.Env):
         #                          lateral_velocity=0.0,
         #                          angular_velocity=0.0)
 
-        if GUI_MODE:
+        if GUI_MODE or (render is True):
             p.connect(p.GUI)
             # Uncommend to create a video.
             #video_options = ("--width=960 --height=540 
@@ -213,13 +216,18 @@ class OpenCatGymEnv(gym.Env):
         vx, vy = state_vel_t_clip[0], state_vel_t_clip[1]  # 世界坐标系下的速度
         vx_robot =  np.cos(yaw) * vx + np.sin(yaw) * vy
         vy_robot = -np.sin(yaw) * vx + np.cos(yaw) * vy
-        
-        # 计算速度误差（向量差的范数）
-        velocity_error = np.linalg.norm(vx_robot - self.target_velocity[0]) + np.linalg.norm(vy_robot - self.target_velocity[1])
+         
+        # 计算速度误差
+        # velocity_error = np.linalg.norm(vx_robot - self.target_velocity[0]) + np.linalg.norm(vy_robot - self.target_velocity[1])
+        velocity_reward = 0
+        if self.target_velocity[0] != 0:
+            velocity_reward += vx_robot * self.target_velocity[0] / np.abs(self.target_velocity[0])
+        if self.target_velocity[1] != 0:
+            velocity_reward += vy_robot * self.target_velocity[1] / np.abs(self.target_velocity[1])
         angular_error = np.linalg.norm(state_vel_r_clip[2] - self.target_velocity[2])
         
         # 速度匹配奖励
-        velocity_reward = -FAC_VELOCITY * velocity_error
+        velocity_reward = FAC_VELOCITY * velocity_reward
         angular_reward = -FAC_DIRECTION * angular_error
         
         # 总奖励
@@ -265,7 +273,7 @@ class OpenCatGymEnv(gym.Env):
         p.setGravity(0,0,-9.81)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         
-        plane_id = p.loadURDF("plane.urdf")
+        self.plane_id = p.loadURDF("plane.urdf")
         # # 加载自定义地面mesh
         # ground_shape = p.createCollisionShape(p.GEOM_MESH, 
         #                                     fileName="models/Martian-Terrain.stl",
@@ -356,12 +364,18 @@ class OpenCatGymEnv(gym.Env):
 
     def is_fallen(self):
         """ Check if robot is fallen. It becomes "True", 
-            when pitch or roll is more than 1.3 rad.
+            when pitch or roll is more than 1.3 rad,
+            or when torso touches the ground.
         """
         pos, orient = p.getBasePositionAndOrientation(self.robot_id)
         orient = p.getEulerFromQuaternion(orient)
         is_fallen = (np.fabs(orient[0]) > 1.3 
                     or np.fabs(orient[1]) > 1.3)
+
+        # 检测主干和地面碰撞
+        torso_idx = 0
+        if p.getContactPoints(bodyA=self.robot_id, linkIndexA=torso_idx, bodyB=self.plane_id):
+            is_fallen = True
 
         return is_fallen
 

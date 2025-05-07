@@ -5,8 +5,11 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from opencat_gym_env import OpenCatGymEnv
 
-env = OpenCatGymEnv()
-model = PPO.load("trained/PPO_0506_145436_backward")
+
+env = OpenCatGymEnv(render=True)
+
+# model = PPO.load("trained/PPO_0506_173349_forward_only")
+model = PPO.load("trained/ckpts/PPO_0506_175825_forward_only/rl_model_275000_steps.zip")
 
 env.set_target_velocity(forward_velocity=1.0, lateral_velocity=0.0, angular_velocity=0.0)
 obs, info = env.reset()
