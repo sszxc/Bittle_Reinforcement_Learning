@@ -81,7 +81,7 @@ class OpenCatGymEnv(gym.Env):
         p.resetDebugVisualizerCamera(cameraDistance=0.5, 
                                      cameraYaw=-170, 
                                      cameraPitch=-40, 
-                                     cameraTargetPosition=[0.4,0,0])
+                                     cameraTargetPosition=[0.1,0,0])
 
         # The action space are the 8 joint angles. Box 是一种用于表示连续动作空间的类型（每个维度有上下界）
         self.action_space = gym.spaces.Box(np.array([-1]*8), np.array([1]*8))
@@ -286,7 +286,7 @@ class OpenCatGymEnv(gym.Env):
         # ground_visual = p.createVisualShape(p.GEOM_MESH,
         #                                   fileName="models/Martian-Terrain.stl",
         #                                   meshScale=[0.03,0.03,0.03])
-        # ground_id = p.createMultiBody(baseMass=0,
+        # self.plane_id = p.createMultiBody(baseMass=0,
         #                             baseCollisionShapeIndex=ground_shape,
         #                             baseVisualShapeIndex=ground_visual,
         #                             basePosition=[-1.0,1.0,-1.2],
